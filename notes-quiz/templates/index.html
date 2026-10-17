@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notes to Quiz</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%234f46e5'/%3E%3Cpath d='M8 10h16M8 16h10M8 22h16' stroke='white' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+<style>
+:root{
+  --bg:#f5f6fb; --card:#ffffff; --text:#0f172a; --muted:#64748b; --border:#e4e8f1; --soft:#eef0f8;
+  --accent:#4f46e5; --accent-2:#7c3aed; --accent-soft:#eceafd;
+  --ok:#059669; --ok-soft:#e3f6ee; --bad:#dc2626; --bad-soft:#fdeaea;
+  --shadow:0 1px 2px rgba(15,23,42,.05),0 8px 24px rgba(15,23,42,.06);
+  --r:16px; color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b0f1a; --card:#121829; --text:#e8ebf6; --muted:#8c96b2; --border:#232b42; --soft:#1a2136;
+    --accent:#8b93ff; --accent-2:#a78bfa; --accent-soft:#1f2447;
+    --ok:#34d399; --ok-soft:#10312a; --bad:#f87171; --bad-soft:#3a1a1d;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35); color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b0f1a; --card:#121829; --text:#e8ebf6; --muted:#8c96b2; --border:#232b42; --soft:#1a2136;
+  --accent:#8b93ff; --accent-2:#a78bfa; --accent-soft:#1f2447;
+  --ok:#34d399; --ok-soft:#10312a; --bad:#f87171; --bad-soft:#3a1a1d;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35); color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 "Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto 0;height:380px;z-index:-1;pointer-events:none;
+  background:radial-gradient(60% 100% at 20% 0%,color-mix(in srgb,var(--accent) 16%,transparent),transparent 70%),
+             radial-gradient(50% 100% at 85% 0%,color-mix(in srgb,var(--accent-2) 12%,transparent),transparent 70%)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 55%,transparent);outline-offset:2px}
+
+.top{position:sticky;top:0;z-index:20;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  background:color-mix(in srgb,var(--bg) 78%,transparent);border-bottom:1px solid var(--border)}
+.top-in{max-width:820px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;letter-spacing:-.01em}
+.logo{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent-2))}
+.icon-btn{width:40px;height:40px;border-radius:12px;border:1px solid var(--border);background:var(--card);cursor:pointer;display:grid;place-items:center;transition:transform .15s,border-color .15s}
+.icon-btn:hover{border-color:var(--accent);transform:translateY(-1px)}
+
+.wrap{max-width:820px;margin:0 auto;padding:36px 20px 90px}
+.hero{margin-bottom:24px}
+.hero h1{font-size:clamp(30px,5vw,44px);line-height:1.1;margin:0 0 10px;font-weight:800;letter-spacing:-.03em}
+.hero h1 span{background:linear-gradient(90deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{margin:0;color:var(--muted);font-size:17px;max-width:56ch}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow)}
+.panel{padding:24px}
+.l{display:block;font-weight:700;font-size:14px;margin:0 0 8px}
+textarea.notes{width:100%;min-height:240px;resize:none;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--soft);transition:border-color .15s,box-shadow .15s}
+textarea:focus,input[type=text]:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 18%,transparent);background:var(--card)}
+.uprow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.uprow .l{margin:0}
+textarea.notes.drag{border-color:var(--accent);background:var(--accent-soft)}
+.fnote{margin:-8px 0 14px;padding:9px 12px;border-radius:10px;background:var(--accent-soft);color:var(--accent);font-size:14px;font-weight:600}
+.fnote.warn{background:var(--bad-soft);color:var(--bad)}
+.meta{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin:6px 2px 20px}
+.meta button{background:none;border:0;color:var(--accent);font-weight:600;cursor:pointer;padding:0}
+
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;border-radius:14px;background:var(--soft);margin-bottom:22px}
+.seg label{position:relative}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{display:block;text-align:center;padding:10px 12px;border-radius:10px;font-weight:700;color:var(--muted);cursor:pointer;transition:all .15s}
+.seg small{display:block;font-weight:500;font-size:12.5px}
+.seg input:checked + span{background:var(--card);color:var(--accent);box-shadow:var(--shadow)}
+.seg input:focus-visible + span{outline:3px solid color-mix(in srgb,var(--accent) 55%,transparent)}
+
+.count-row{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+input[type=range]{flex:1;accent-color:var(--accent);height:6px}
+input[type=number]{width:76px;padding:9px 10px;border:1px solid var(--border);border-radius:10px;background:var(--soft);text-align:center;font-weight:700}
+input[type=number]:focus{outline:0;border-color:var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.chip{position:relative}
+.chip input{position:absolute;opacity:0;pointer-events:none}
+.chip span{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;border:1px solid var(--border);background:var(--soft);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--muted)}
+.chip span::before{content:"";width:16px;height:16px;border-radius:5px;border:2px solid var(--muted);transition:all .15s}
+.chip span:hover{border-color:var(--accent);color:var(--text)}
+.chip input:checked + span{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.chip input:checked + span::before{background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/12px no-repeat;border-color:var(--accent)}
+.chip input:focus-visible + span{outline:3px solid color-mix(in srgb,var(--accent) 55%,transparent);outline-offset:2px}
+.hint{font-size:13px;color:var(--muted);margin:0 0 22px}
+
+.btn{display:inline-flex;gap:10px;align-items:center;justify-content:center;padding:13px 22px;border:0;border-radius:12px;font-weight:700;font-size:16px;color:#fff;cursor:pointer;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 6px 18px color-mix(in srgb,var(--accent) 35%,transparent);transition:transform .15s,box-shadow .15s,opacity .15s}
+.btn.block{width:100%}
+.btn:hover:not(:disabled){transform:translateY(-1px)}
+.btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.ghost{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 14px;font-size:14px;font-weight:600;cursor:pointer}
+.ghost:hover{border-color:var(--accent);color:var(--accent)}
+.err{background:var(--bad-soft);color:var(--bad);border:1px solid color-mix(in srgb,var(--bad) 30%,transparent);padding:12px 16px;border-radius:12px;font-weight:600;margin-bottom:16px}
+
+/* loading scene */
+.loading{text-align:center;padding:48px 20px 24px}
+.scene{position:relative;height:210px;max-width:580px;margin:0 auto 24px;overflow:hidden}
+.ground{position:absolute;left:0;right:0;bottom:10px;height:6px;border-radius:4px;background:repeating-linear-gradient(90deg,var(--border) 0 18px,transparent 18px 32px);animation:gr .5s linear infinite}
+@keyframes gr{to{background-position:-32px 0}}
+.tree{position:absolute;right:0;bottom:12px}
+.bananas{transform-origin:60px 70px;animation:sway 1.6s ease-in-out infinite alternate}
+@keyframes sway{from{transform:rotate(-3deg)}to{transform:rotate(3deg)}}
+.monkey{position:absolute;bottom:14px;left:0;animation:run 3.6s ease-in-out infinite}
+@keyframes run{0%{left:0;opacity:0}8%{opacity:1}70%{left:calc(100% - 205px);opacity:1}90%{left:calc(100% - 205px);opacity:1}100%{left:calc(100% - 205px);opacity:0}}
+.hop{animation:hop .26s ease-in-out infinite alternate}
+@keyframes hop{to{transform:translateY(-9px)}}
+.limb{transform-origin:40px 48px;animation:swing .26s ease-in-out infinite alternate}
+.limb.b{animation-direction:alternate-reverse}
+@keyframes swing{from{transform:rotate(-38deg)}to{transform:rotate(38deg)}}
+.tail{transform-origin:20px 40px;animation:wag .5s ease-in-out infinite alternate}
+@keyframes wag{from{transform:rotate(-8deg)}to{transform:rotate(10deg)}}
+.lmsg{font-weight:700;font-size:18px;min-height:30px;transition:opacity .3s}
+.lsub{color:var(--muted);margin:4px 0 20px}
+
+/* result chrome */
+.rbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+.rtitle{font-size:clamp(24px,4vw,32px);font-weight:800;letter-spacing:-.02em;margin:0 0 4px;line-height:1.15}
+.rsub{color:var(--muted);margin:0 0 22px}
+
+/* reviewer */
+.topic{padding:18px 20px;margin-bottom:12px}
+.topic p{margin:0}
+.topic b{font-weight:800}
+.topic .ex{margin-top:10px;padding:10px 14px;border-radius:10px;background:var(--accent-soft);font-size:15px}
+.topic .ex em{font-style:normal;font-weight:700;color:var(--accent);margin-right:6px}
+
+/* quiz */
+.prog{position:sticky;top:64px;z-index:10;display:flex;align-items:center;gap:14px;padding:12px 16px;margin-bottom:8px;font-size:14px;font-weight:700;color:var(--muted)}
+.bar{flex:1;height:8px;border-radius:99px;background:var(--soft);overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .35s ease}
+.grp{margin:26px 0 4px;font-size:18px;font-weight:800}
+.grp small{display:block;font-weight:500;color:var(--muted);font-size:14px}
+.q{padding:20px;margin-top:14px}
+.qh{display:flex;gap:12px;margin-bottom:14px}
+.n{flex:none;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-weight:800;font-size:14px}
+.qt{margin:3px 0 0;font-weight:600}
+.choices{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.choice{display:flex;gap:12px;align-items:center;width:100%;text-align:left;padding:11px 14px;background:var(--soft);border:1.5px solid transparent;border-radius:12px;cursor:pointer;transition:border-color .15s,background .15s}
+.choice:hover:not(:disabled){border-color:var(--accent)}
+.choice b{flex:none;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:var(--card);border:1px solid var(--border);font-size:12px}
+.choice.sel{background:var(--accent-soft);border-color:var(--accent)}
+.choice.sel b{background:var(--accent);border-color:var(--accent);color:#fff}
+.choice:disabled{cursor:default}
+.choice.right{background:var(--ok-soft);border-color:var(--ok)} .choice.right b{background:var(--ok);border-color:var(--ok);color:#fff}
+.choice.wrong{background:var(--bad-soft);border-color:var(--bad)} .choice.wrong b{background:var(--bad);border-color:var(--bad);color:#fff}
+.typed{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--soft);resize:vertical}
+.typed:disabled{opacity:.85}
+.finish{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:26px}
+.finish span{color:var(--muted);font-size:14px;font-weight:600}
+
+.score{padding:22px;margin-bottom:6px;display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.big{font-size:44px;font-weight:800;letter-spacing:-.03em;line-height:1;background:linear-gradient(90deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.score p{margin:0;color:var(--muted);font-weight:600}
+.score .acts{display:flex;gap:10px;margin-left:auto;flex-wrap:wrap}
+.tag{display:inline-block;font-size:13px;font-weight:800;padding:3px 10px;border-radius:99px;margin-bottom:10px}
+.tag.ok{background:var(--ok-soft);color:var(--ok)} .tag.no{background:var(--bad-soft);color:var(--bad)}
+.rev{margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--soft);font-size:15px}
+.rev strong{color:var(--ok)}
+.rev .why{display:block;color:var(--muted);margin-top:4px}
+.rev button{margin-top:10px}
+
+@media (max-width:640px){
+  .wrap{padding:26px 14px 70px}
+  .panel{padding:18px}
+  .score .acts{margin-left:0}
+  .prog{top:60px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 12h10M4 19h16"/></svg></div>
+      Notes to Quiz
+    </div>
+    <button class="icon-btn" id="theme" type="button" aria-label="Switch light or dark theme">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- PAGE 1: setup -->
+<section id="vSetup" class="wrap">
+  <div class="hero">
+    <h1>Turn your notes into <span>study material</span></h1>
+    <p>Paste a lesson, then choose a reviewer or a quiz.</p>
+  </div>
+  <form class="card panel" id="form">
+    <div id="error" class="err" hidden></div>
+
+    <div class="uprow">
+      <label class="l" for="notes">Your notes</label>
+      <button type="button" class="ghost" id="pick">Upload file</button>
+      <input type="file" id="file" accept=".pdf,.docx,.pptx,.xlsx,.png,.jpg,.jpeg,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/png,image/jpeg" hidden>
+    </div>
+    <textarea class="notes" id="notes" maxlength="20000" placeholder="Paste text from your lesson here"></textarea>
+    <div class="meta"><span><span id="chars">0</span> / 20,000</span><button type="button" id="clear">Clear</button></div>
+    <div id="fileNote" class="fnote" hidden></div>
+    <p class="hint" style="margin-top:-10px">Accepts DOCX, PPTX (including images), XLSX, PDF and photos (.png, .jpg). You can also drop a file onto the box.</p>
+
+    <span class="l">What do you want?</span>
+    <div class="seg">
+      <label><input type="radio" name="mode" value="quiz" checked><span>Quiz<small>Test yourself</small></span></label>
+      <label><input type="radio" name="mode" value="reviewer"><span>Reviewer<small>Topics and definitions</small></span></label>
+    </div>
+
+    <div id="quizOpts">
+      <span class="l">Number of questions</span>
+      <div class="count-row">
+        <input id="range" type="range" min="1" max="100" value="10" aria-label="Number of questions slider">
+        <input id="count" type="number" min="1" max="100" value="10" aria-label="Number of questions">
+      </div>
+
+      <span class="l">Question types</span>
+      <div class="chips">
+        <label class="chip"><input type="checkbox" name="type" value="multiple_choice" checked><span>Multiple choice</span></label>
+        <label class="chip"><input type="checkbox" name="type" value="true_false"><span>True or false</span></label>
+        <label class="chip"><input type="checkbox" name="type" value="identification"><span>Identification</span></label>
+        <label class="chip"><input type="checkbox" name="type" value="enumeration"><span>Enumeration</span></label>
+        <label class="chip"><input type="checkbox" name="type" value="fill_in_the_blanks"><span>Fill in the blanks</span></label>
+      </div>
+      <p class="hint">Pick as many as you like. Questions are split evenly between the types you pick.</p>
+    </div>
+
+    <button class="btn block" id="go" type="submit">Generate</button>
+  </form>
+</section>
+
+<!-- loading -->
+<section id="vLoading" class="wrap" hidden>
+  <div class="loading">
+    <div class="scene" aria-hidden="true">
+      <div class="ground"></div>
+      <svg class="tree" viewBox="0 0 120 150" width="110" height="138">
+        <rect x="52" y="62" width="16" height="84" rx="6" fill="#8b5a2b"/>
+        <ellipse cx="60" cy="48" rx="52" ry="30" fill="#2f9e5b"/>
+        <ellipse cx="28" cy="62" rx="26" ry="16" fill="#27894e"/>
+        <ellipse cx="94" cy="62" rx="26" ry="16" fill="#27894e"/>
+        <g class="bananas" fill="#f6d132" stroke="#c9a20f" stroke-width="1.5">
+          <ellipse cx="44" cy="92" rx="5" ry="13" transform="rotate(18 44 92)"/>
+          <ellipse cx="58" cy="96" rx="5" ry="14"/>
+          <ellipse cx="72" cy="92" rx="5" ry="13" transform="rotate(-18 72 92)"/>
+        </g>
+      </svg>
+      <div class="monkey"><div class="hop">
+        <svg viewBox="0 0 100 80" width="100" height="80">
+          <g class="tail"><path d="M20 40 C2 40 0 18 14 14" fill="none" stroke="#7a4a21" stroke-width="6" stroke-linecap="round"/></g>
+          <g class="limb"><path d="M30 50 L24 71" stroke="#7a4a21" stroke-width="8" stroke-linecap="round" fill="none"/></g>
+          <g class="limb b"><path d="M46 52 L52 72" stroke="#7a4a21" stroke-width="8" stroke-linecap="round" fill="none"/></g>
+          <ellipse cx="40" cy="42" rx="24" ry="14" fill="#8b5a2b"/>
+          <g class="limb b"><path d="M56 44 L72 54" stroke="#8b5a2b" stroke-width="7" stroke-linecap="round" fill="none"/></g>
+          <g class="limb"><path d="M50 46 L63 60" stroke="#8b5a2b" stroke-width="7" stroke-linecap="round" fill="none"/></g>
+          <circle cx="68" cy="26" r="15" fill="#8b5a2b"/>
+          <circle cx="54" cy="24" r="6" fill="#d9a77a"/>
+          <ellipse cx="75" cy="30" rx="9" ry="7" fill="#f0cfa8"/>
+          <circle cx="75" cy="23" r="2.4" fill="#222"/>
+          <path d="M73 34 q4 3 8 0" stroke="#7a4a21" fill="none" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </div></div>
+    </div>
+    <div class="lmsg" id="lmsg" aria-live="polite">Getting started…</div>
+    <p class="lsub">This can take up to a minute for long notes.</p>
+    <button class="ghost" id="cancel" type="button">Cancel</button>
+  </div>
+</section>
+
+<!-- PAGE 2: result -->
+<section id="vResult" class="wrap" hidden>
+  <div class="rbar">
+    <button class="ghost" id="back" type="button">← New notes</button>
+    <button class="ghost" id="copy" type="button" hidden>Copy reviewer</button>
+  </div>
+
+  <div id="reviewer" hidden>
+    <h1 class="rtitle" id="rtitle"></h1>
+    <p class="rsub" id="rcount"></p>
+    <div id="topics"></div>
+  </div>
+
+  <div id="quiz" hidden>
+    <h1 class="rtitle">Quiz</h1>
+    <p class="rsub" id="qsub"></p>
+    <div id="score" class="card score" hidden></div>
+    <div id="prog" class="card prog"><span id="progtext"></span><div class="bar"><i id="progbar"></i></div></div>
+    <div id="questions"></div>
+    <div class="finish" id="finish">
+      <button class="btn" id="finishBtn" type="button" disabled>Finish and see answers</button>
+      <span id="left"></span>
+    </div>
+  </div>
+</section>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const TYPE_INFO = {
+  multiple_choice: ["Multiple choice", "Choose the best answer."],
+  true_false: ["True or false", "Decide if each statement is true or false."],
+  identification: ["Identification", "Type the term being described."],
+  enumeration: ["Enumeration", "Type the items asked for, separated by commas."],
+  fill_in_the_blanks: ["Fill in the blanks", "Type the missing word or phrase."],
+};
+const notes = $("#notes"), go = $("#go"), range = $("#range"), count = $("#count");
+const views = { setup: $("#vSetup"), loading: $("#vLoading"), result: $("#vResult") };
+let ctrl = null, lastData = null, quiz = null;
+
+function show(v) { for (const k in views) views[k].hidden = k !== v; window.scrollTo(0, 0); }
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;   // textContent keeps AI output from running as HTML
+  return n;
+}
+
+/* theme */
+$("#theme").addEventListener("click", () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme = dark ? "light" : "dark";
+  try { localStorage.setItem("theme", root.dataset.theme); } catch (e) {}
+});
+
+/* setup form */
+let uploadedNotes = null, uploadedFile = null;
+notes.addEventListener("input", () => {
+  uploadedNotes = null; uploadedFile = null; fileIn.value = ""; note("");
+  $("#chars").textContent = notes.value.length.toLocaleString();
+});
+$("#clear").addEventListener("click", () => {
+  notes.value = ""; uploadedNotes = null; uploadedFile = null; fileIn.value = "";
+  $("#chars").textContent = "0"; note(""); notes.focus();
+});
+range.addEventListener("input", () => { count.value = range.value; });
+count.addEventListener("input", () => { range.value = Math.max(1, Math.min(100, parseInt(count.value || "1", 10))); });
+count.addEventListener("change", () => { count.value = range.value; });
+document.querySelectorAll('input[name="mode"]').forEach((r) =>
+  r.addEventListener("change", () => { $("#quizOpts").hidden = document.querySelector('input[name="mode"]:checked').value !== "quiz"; }));
+
+function showError(msg) { const e = $("#error"); e.textContent = msg; e.hidden = !msg; }
+
+
+/* file upload */
+const fileIn = $("#file"), pick = $("#pick"), fnote = $("#fileNote");
+function note(msg, warn) { fnote.textContent = msg; fnote.className = "fnote" + (warn ? " warn" : ""); fnote.hidden = !msg; }
+async function upload(file) {
+  showError(""); note("");
+  uploadedNotes = null; uploadedFile = null;
+  $("#chars").textContent = notes.value.length.toLocaleString();
+  pick.disabled = true; pick.textContent = "Reading… (scans can take a minute)";
+  try {
+    const fd = new FormData(); fd.append("file", file);
+    const res = await fetch("/api/extract", { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Could not read that file.");
+    uploadedNotes = data.text;
+    uploadedFile = file;
+    $("#chars").textContent = data.chars.toLocaleString();
+    note("Using " + file.name + " · " + data.chars.toLocaleString() + " characters" + (data.pages ? " · " + data.pages + " pages" : "") +
+         (data.ocr_pages ? " · " + data.ocr_pages + " scanned" : "") +
+          (data.ocr_images ? " · " + data.ocr_images + " slide images scanned" : "") +
+         (data.truncated ? " · WARNING: This file exceeds 20,000 characters. Only the first 20,000 characters will be used." : "") +
+         (data.notice ? " · " + data.notice : ""), data.truncated || !!data.notice);
+  } catch (ex) {
+    uploadedNotes = null; uploadedFile = null;
+    $("#chars").textContent = notes.value.length.toLocaleString();
+    note(ex.message, true);
+  } finally { pick.disabled = false; pick.textContent = "Upload file"; }
+}
+pick.addEventListener("click", () => { fileIn.value = ""; fileIn.click(); });
+fileIn.addEventListener("change", () => fileIn.files[0] && upload(fileIn.files[0]));
+["dragenter", "dragover"].forEach((t) => notes.addEventListener(t, (e) => { e.preventDefault(); notes.classList.add("drag"); }));
+["dragleave", "drop"].forEach((t) => notes.addEventListener(t, (e) => { e.preventDefault(); notes.classList.remove("drag"); }));
+notes.addEventListener("drop", (e) => { const f = e.dataTransfer.files[0]; if (f) upload(f); });
+
+/* loading animation */
+let msgTimer = null;
+const MSGS = {
+  quiz: ["Waking up the monkey…", "Shaking questions out of the tree…", "Counting bananas…", "Hiding the right answers…", "Almost at the tree…"],
+  reviewer: ["Waking up the monkey…", "Picking out the key terms…", "Peeling the definitions…", "Counting bananas…", "Almost at the tree…"],
+};
+function startLoading(mode) {
+  let i = 0; const m = $("#lmsg");
+  m.textContent = MSGS[mode][0];
+  clearInterval(msgTimer);
+  msgTimer = setInterval(() => {
+    i = (i + 1) % MSGS[mode].length;
+    m.style.opacity = 0;
+    setTimeout(() => { m.textContent = MSGS[mode][i]; m.style.opacity = 1; }, 250);
+  }, 2800);
+  show("loading");
+}
+function stopLoading() { clearInterval(msgTimer); }
+
+/* submit */
+$("#form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  showError("");
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+  const types = [...document.querySelectorAll('input[name="type"]:checked')].map((i) => i.value);
+  const sourceNotes = uploadedFile ? uploadedNotes : notes.value;
+  if (mode === "quiz" && !types.length) return showError("Pick at least one question type.");
+  if (mode === "quiz" && +count.value < types.length) return showError("Ask for at least one question per selected type.");
+
+  ctrl = new AbortController();
+  startLoading(mode);
+  try {
+    const res = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: ctrl.signal,
+      body: JSON.stringify({ notes: sourceNotes, mode, count: count.value, types }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Something went wrong.");
+    lastData = data;
+    if (data.mode === "reviewer") renderReviewer(data); else startQuiz(data.questions);
+    stopLoading();
+    show("result");
+    history.pushState({ v: "result" }, "");
+  } catch (ex) {
+    stopLoading();
+    show("setup");
+    if (ex.name !== "AbortError") showError(ex.message);
+  }
+});
+$("#cancel").addEventListener("click", () => ctrl && ctrl.abort());
+$("#back").addEventListener("click", () => (history.state && history.state.v === "result" ? history.back() : show("setup")));
+addEventListener("popstate", (e) => { if (e.state && e.state.v === "result" && lastData) show("result"); else show("setup"); });
+
+/* reviewer */
+function renderReviewer(d) {
+  $("#quiz").hidden = true; $("#reviewer").hidden = false; $("#copy").hidden = false;
+  $("#rtitle").textContent = d.title;
+  $("#rcount").textContent = d.topics.length + " topics";
+  $("#topics").replaceChildren(...d.topics.map((t) => {
+    const c = el("article", "card topic");
+    const p = el("p"); p.append(el("b", "", t.topic), " – " + t.definition);
+    c.append(p);
+    if (t.example && t.example.trim()) { const x = el("p", "ex"); x.append(el("em", "", "Example"), t.example); c.append(x); }
+    return c;
+  }));
+}
+$("#copy").addEventListener("click", async (e) => {
+  const text = lastData.topics.map((t) => `${t.topic} – ${t.definition}` + (t.example ? `\n   Example: ${t.example}` : "")).join("\n\n");
+  try { await navigator.clipboard.writeText(lastData.title + "\n\n" + text); e.target.textContent = "Copied"; }
+  catch (x) { e.target.textContent = "Copy failed"; }
+  setTimeout(() => (e.target.textContent = "Copy reviewer"), 1500);
+});
+
+/* quiz */
+const norm = (s) => s.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\b(the|a|an)\b/g, " ").replace(/\s+/g, " ").trim();
+function typedCorrect(q, val) {
+  if (q.type === "enumeration") {
+    const given = val.split(/[,;\n]/).map(norm).filter(Boolean);
+    return q.items.every((it) => given.includes(norm(it)));
+  }
+  return norm(val) === norm(q.answer);
+}
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const isChoice = (q) => Array.isArray(q.options) && q.options.length > 0;
+const answered = (i) => { const a = quiz.answers[i]; return typeof a === "number" || (typeof a === "string" && a.trim() !== ""); };
+const correct = (i) => { const q = quiz.qs[i]; return isChoice(q) ? quiz.answers[i] === q.correct : (quiz.override[i] || typedCorrect(q, quiz.answers[i] || "")); };
+
+function startQuiz(questions) {
+  quiz = { qs: questions, answers: new Array(questions.length).fill(null), override: {}, done: false, cards: [] };
+  $("#reviewer").hidden = true; $("#copy").hidden = true; $("#quiz").hidden = false;
+  const kinds = [...new Set(questions.map((q) => q.type))].map((t) => TYPE_INFO[t][0].toLowerCase());
+  $("#qsub").textContent = questions.length + " questions · " + kinds.join(", ");
+  drawQuiz();
+}
+
+function drawQuiz() {
+  quiz.done = false;
+  $("#score").hidden = true; $("#prog").hidden = false; $("#finish").hidden = false;
+  const box = $("#questions"); box.replaceChildren(); quiz.cards = [];
+  let last = null;
+  quiz.qs.forEach((q, i) => {
+    if (q.type !== last) {
+      const g = el("h2", "grp", TYPE_INFO[q.type][0]); g.append(el("small", "", TYPE_INFO[q.type][1]));
+      box.append(g); last = q.type;
+    }
+    const c = qCard(i); quiz.cards[i] = c; box.append(c);
+  });
+  updateProgress();
+}
+
+function qCard(i) {
+  const q = quiz.qs[i], rev = quiz.done;
+  const card = el("div", "card q");
+  const head = el("div", "qh"); head.append(el("div", "n", String(i + 1)), el("p", "qt", q.question));
+  if (rev) { const ok = correct(i); card.append(el("span", "tag " + (ok ? "ok" : "no"), ok ? "Correct" : "Incorrect")); }
+  card.append(head);
+
+  if (isChoice(q)) {
+    const list = el("ul", "choices");
+    q.options.forEach((opt, k) => {
+      const b = el("button", "choice"); b.type = "button";
+      b.append(el("b", "", String.fromCharCode(65 + k)), opt);
+      if (rev) {
+        b.disabled = true;
+        if (k === q.correct) b.classList.add("right");
+        else if (k === quiz.answers[i]) b.classList.add("wrong");
+      } else {
+        if (quiz.answers[i] === k) b.classList.add("sel");
+        b.addEventListener("click", () => {
+          quiz.answers[i] = k;
+          list.querySelectorAll(".choice").forEach((x, n) => x.classList.toggle("sel", n === k));
+          updateProgress();
+        });
+      }
+      const li = el("li"); li.append(b); list.append(li);
+    });
+    card.append(list);
+  } else {
+    const f = q.type === "enumeration" ? el("textarea", "typed") : el("input", "typed");
+    if (q.type === "enumeration") f.rows = 2; else f.type = "text";
+    f.id = "t" + i; f.setAttribute("aria-label", "Answer to question " + (i + 1));
+    f.placeholder = q.type === "enumeration" ? "Item 1, item 2, item 3" : "Type your answer";
+    f.autocomplete = "off"; f.value = quiz.answers[i] || "";
+    if (rev) f.disabled = true; else f.addEventListener("input", () => { quiz.answers[i] = f.value; updateProgress(); });
+    card.append(f);
+  }
+
+  if (rev) {
+    const r = el("div", "rev");
+    r.append(el("strong", "", "Correct answer: "), q.answer);
+    if (q.explanation) r.append(el("span", "why", q.explanation));
+    if (!isChoice(q)) {
+      const b = el("button", "ghost", quiz.override[i] ? "Undo: count as wrong" : "My answer was right too");
+      if (correct(i) && !quiz.override[i]) b.hidden = true;
+      b.type = "button";
+      b.addEventListener("click", () => {
+        quiz.override[i] = !quiz.override[i];
+        const n = qCard(i); quiz.cards[i].replaceWith(n); quiz.cards[i] = n; drawScore();
+      });
+      r.append(b);
+    }
+    card.append(r);
+  }
+  return card;
+}
+
+function updateProgress() {
+  const n = quiz.qs.length, a = quiz.qs.filter((_, i) => answered(i)).length;
+  $("#progtext").textContent = a + " of " + n + " answered";
+  $("#progbar").style.width = (a / n) * 100 + "%";
+  $("#finishBtn").disabled = a < n;
+  $("#left").textContent = a < n ? (n - a) + " left to answer" : "All answered. Ready to check.";
+}
+
+$("#finishBtn").addEventListener("click", () => {
+  quiz.done = true;
+  $("#prog").hidden = true; $("#finish").hidden = true;
+  quiz.qs.forEach((_, i) => { const n = qCard(i); quiz.cards[i].replaceWith(n); quiz.cards[i] = n; });
+  drawScore();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+function drawScore() {
+  const n = quiz.qs.length, ok = quiz.qs.filter((_, i) => correct(i)).length, pct = Math.round((ok / n) * 100);
+  const s = $("#score"); s.hidden = false; s.replaceChildren();
+  const left = el("div"); left.append(el("div", "big", ok + " / " + n), el("p", "", pct + "% correct"));
+  const acts = el("div", "acts");
+  const again = el("button", "ghost", "Try again"); again.type = "button";
+  again.addEventListener("click", () => {
+    quiz.qs.forEach((q) => { if (isChoice(q) && q.type === "multiple_choice") { const t = q.options[q.correct]; shuffle(q.options); q.correct = q.options.indexOf(t); } });
+    quiz.answers.fill(null); quiz.override = {}; drawQuiz(); window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+  const fresh = el("button", "ghost", "New notes"); fresh.type = "button";
+  fresh.addEventListener("click", () => $("#back").click());
+  acts.append(again, fresh); s.append(left, acts);
+}
+</script>
+</body>
+</html>
