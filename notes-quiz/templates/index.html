@@ -167,6 +167,11 @@ input[type=number]:focus{outline:0;border-color:var(--accent)}
 .rev strong{color:var(--ok)}
 .rev .why{display:block;color:var(--muted);margin-top:4px}
 .rev button{margin-top:10px}
+input:disabled{opacity:.5;cursor:not-allowed}
+.airev{margin-top:12px;padding:10px 12px;border-radius:10px;font-size:15px}
+.airev b{display:block;margin-bottom:2px}
+.airev.ok{background:var(--ok-soft)} .airev.ok b{color:var(--ok)}
+.airev.no{background:var(--bad-soft)} .airev.no b{color:var(--bad)}
 
 @media (max-width:640px){
   .wrap{padding:26px 14px 70px}
@@ -222,6 +227,7 @@ input[type=number]:focus{outline:0;border-color:var(--accent)}
         <input id="range" type="range" min="1" max="100" value="10" aria-label="Number of questions slider">
         <input id="count" type="number" min="1" max="100" value="10" aria-label="Number of questions">
       </div>
+      <p class="hint" id="capHint" style="margin-top:-8px" hidden></p>
 
       <span class="l">Question types</span>
       <div class="chips">
@@ -292,6 +298,7 @@ input[type=number]:focus{outline:0;border-color:var(--accent)}
   <div id="quiz" hidden>
     <h1 class="rtitle">Quiz</h1>
     <p class="rsub" id="qsub"></p>
+    <div id="qnote" class="fnote warn" style="margin-top:-10px" hidden></div>
     <div id="score" class="card score" hidden></div>
     <div id="prog" class="card prog"><span id="progtext"></span><div class="bar"><i id="progbar"></i></div></div>
     <div id="questions"></div>
@@ -313,7 +320,7 @@ const TYPE_INFO = {
 };
 const notes = $("#notes"), go = $("#go"), range = $("#range"), count = $("#count");
 const views = { setup: $("#vSetup"), loading: $("#vLoading"), result: $("#vResult") };
-let ctrl = null, lastData = null, quiz = null;
+let ctrl = null, lastData = null, quiz = null, lastNotes = "";
 
 function show(v) { for (const k in views) views[k].hidden = k !== v; window.scrollTo(0, 0); }
 function el(tag, cls, text) {
@@ -365,6 +372,7 @@ async function upload(file) {
     if (!res.ok) throw new Error(data.error || "Could not read that file.");
     uploadedNotes = data.text;
     uploadedFile = file;
+    updateCap();
     $("#chars").textContent = data.chars.toLocaleString();
     note("Using " + file.name + " · " + data.chars.toLocaleString() + " characters" + (data.pages ? " · " + data.pages + " pages" : "") +
          (data.ocr_pages ? " · " + data.ocr_pages + " scanned" : "") +
@@ -375,6 +383,7 @@ async function upload(file) {
     uploadedNotes = null; uploadedFile = null;
     $("#chars").textContent = notes.value.length.toLocaleString();
     note(ex.message, true);
+    updateCap();
   } finally { pick.disabled = false; pick.textContent = "Upload file"; }
 }
 pick.addEventListener("click", () => { fileIn.value = ""; fileIn.click(); });
@@ -409,6 +418,7 @@ $("#form").addEventListener("submit", async (e) => {
   const mode = document.querySelector('input[name="mode"]:checked').value;
   const types = [...document.querySelectorAll('input[name="type"]:checked')].map((i) => i.value);
   const sourceNotes = uploadedFile ? uploadedNotes : notes.value;
+  lastNotes = sourceNotes;
   if (mode === "quiz" && !types.length) return showError("Pick at least one question type.");
   if (mode === "quiz" && +count.value < types.length) return showError("Ask for at least one question per selected type.");
 
@@ -424,7 +434,7 @@ $("#form").addEventListener("submit", async (e) => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Something went wrong.");
     lastData = data;
-    if (data.mode === "reviewer") renderReviewer(data); else startQuiz(data.questions);
+    if (data.mode === "reviewer") renderReviewer(data); else startQuiz(data.questions, data.adjusted);
     stopLoading();
     show("result");
     history.pushState({ v: "result" }, "");
@@ -472,8 +482,11 @@ const isChoice = (q) => Array.isArray(q.options) && q.options.length > 0;
 const answered = (i) => { const a = quiz.answers[i]; return typeof a === "number" || (typeof a === "string" && a.trim() !== ""); };
 const correct = (i) => { const q = quiz.qs[i]; return isChoice(q) ? quiz.answers[i] === q.correct : (quiz.override[i] || typedCorrect(q, quiz.answers[i] || "")); };
 
-function startQuiz(questions) {
-  quiz = { qs: questions, answers: new Array(questions.length).fill(null), override: {}, done: false, cards: [] };
+function startQuiz(questions, adjusted) {
+  quiz = { qs: questions, answers: new Array(questions.length).fill(null), override: {}, reviews: {}, notes: lastNotes, done: false, cards: [] };
+  const qn = $("#qnote");
+  qn.hidden = !adjusted;
+  if (adjusted) qn.textContent = "You asked for " + adjusted.requested + " questions, so we made " + adjusted.actual + ". " + adjusted.reason;
   $("#reviewer").hidden = true; $("#copy").hidden = true; $("#quiz").hidden = false;
   const kinds = [...new Set(questions.map((q) => q.type))].map((t) => TYPE_INFO[t][0].toLowerCase());
   $("#qsub").textContent = questions.length + " questions · " + kinds.join(", ");
@@ -499,7 +512,7 @@ function qCard(i) {
   const q = quiz.qs[i], rev = quiz.done;
   const card = el("div", "card q");
   const head = el("div", "qh"); head.append(el("div", "n", String(i + 1)), el("p", "qt", q.question));
-  if (rev) { const ok = correct(i); card.append(el("span", "tag " + (ok ? "ok" : "no"), ok ? "Correct" : "Incorrect")); }
+  if (rev) { const ok = correct(i); card.append(el("span", "tag " + (ok ? "ok" : "no"), ok ? (quiz.override[i] ? "Correct (AI reviewed)" : "Correct") : "Incorrect")); }
   card.append(head);
 
   if (isChoice(q)) {
@@ -536,15 +549,37 @@ function qCard(i) {
     const r = el("div", "rev");
     r.append(el("strong", "", "Correct answer: "), q.answer);
     if (q.explanation) r.append(el("span", "why", q.explanation));
+    if (q.evidence) r.append(el("span", "why", "From your notes: “" + q.evidence + "”"));
     if (!isChoice(q)) {
-      const b = el("button", "ghost", quiz.override[i] ? "Undo: count as wrong" : "My answer was right too");
-      if (correct(i) && !quiz.override[i]) b.hidden = true;
-      b.type = "button";
-      b.addEventListener("click", () => {
-        quiz.override[i] = !quiz.override[i];
-        const n = qCard(i); quiz.cards[i].replaceWith(n); quiz.cards[i] = n; drawScore();
-      });
-      r.append(b);
+      const rv = quiz.reviews[i];
+      if (rv) {
+        const a = el("div", "airev " + (rv.verdict === "correct" ? "ok" : "no"));
+        a.append(el("b", "", rv.verdict === "correct" ? "AI review: your answer counts" : "AI review: still incorrect"), rv.explanation);
+        r.append(a);
+      } else if (!correct(i)) {
+        const b = el("button", "ghost", "Ask AI to review my answer");
+        b.type = "button";
+        const msg = el("div", "airev no"); msg.hidden = true;
+        b.addEventListener("click", async () => {
+          b.disabled = true; b.textContent = "Reviewing…"; msg.hidden = true;
+          try {
+            const res = await fetch("/api/review-answer", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ type: q.type, question: q.question, answer: q.answer, user_answer: quiz.answers[i] || "", notes: quiz.notes }),
+            });
+            const d = await res.json();
+            if (!res.ok) throw new Error(d.error || "The review failed.");
+            quiz.reviews[i] = d;
+            if (d.verdict === "correct") quiz.override[i] = true;
+            const n = qCard(i); quiz.cards[i].replaceWith(n); quiz.cards[i] = n; drawScore();
+          } catch (ex) {
+            b.disabled = false; b.textContent = "Ask AI to review my answer";
+            msg.textContent = ex.message; msg.hidden = false;
+          }
+        });
+        r.append(b, msg);
+      }
     }
     card.append(r);
   }
@@ -575,12 +610,34 @@ function drawScore() {
   const again = el("button", "ghost", "Try again"); again.type = "button";
   again.addEventListener("click", () => {
     quiz.qs.forEach((q) => { if (isChoice(q) && q.type === "multiple_choice") { const t = q.options[q.correct]; shuffle(q.options); q.correct = q.options.indexOf(t); } });
-    quiz.answers.fill(null); quiz.override = {}; drawQuiz(); window.scrollTo({ top: 0, behavior: "smooth" });
+    quiz.answers.fill(null); quiz.override = {}; quiz.reviews = {}; drawQuiz(); window.scrollTo({ top: 0, behavior: "smooth" });
   });
   const fresh = el("button", "ghost", "New notes"); fresh.type = "button";
   fresh.addEventListener("click", () => $("#back").click());
   acts.append(again, fresh); s.append(left, acts);
 }
+
+/* question limit: a simple rule, one question per N words of notes (no AI, instant) */
+const WORDS_PER_QUESTION = {{ words_per_question }};
+let wanted = +count.value || 10;                      // the number the user chose; kept when the limit changes
+const sourceText = () => ((uploadedFile ? uploadedNotes : notes.value) || "").trim();
+
+function updateCap() {
+  const src = sourceText();
+  const words = src ? src.split(/\s+/).length : 0;
+  const cap = words ? Math.max(1, Math.min(100, Math.floor(words / WORDS_PER_QUESTION))) : 100;
+  range.max = count.max = cap;                        // the bar stops at the limit
+  count.value = range.value = Math.min(wanted, cap);
+  const h = $("#capHint");
+  h.hidden = !words;
+  if (words) h.textContent = "Your notes support up to " + cap + " questions.";
+}
+
+notes.addEventListener("input", () => updateCap());
+$("#clear").addEventListener("click", () => updateCap());
+range.addEventListener("input", () => { wanted = +range.value; });
+count.addEventListener("input", () => { wanted = Math.max(1, parseInt(count.value, 10) || 1); });
+updateCap();
 </script>
 </body>
 </html>
