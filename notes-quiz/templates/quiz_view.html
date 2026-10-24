@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}{{ quiz.title }} · Notes to Quiz{% endblock %}
+{% block content %}
+<a class="crumb" href="{{ url_for('library.library') }}">← Library</a>
+<h1>{{ quiz.title }}</h1>
+<p class="lead">{{ quiz.question_count }} question{{ '' if quiz.question_count == 1 else 's' }} · saved {{ quiz.created_at.strftime('%b %d, %Y') }}</p>
+
+<div class="toolbar">
+  <a class="btn" href="{{ url_for('index', quiz=quiz.id) }}">Take quiz</a>
+  <button class="ghost" id="toggleAll" type="button">Show answers</button>
+</div>
+
+<section class="card section">
+  <h2>Notes used for this quiz</h2>
+  <div class="notesbox" tabindex="0" role="region" aria-label="Saved notes, read only">{{ notes }}</div>
+  <p class="help">These notes are saved with the quiz and can't be edited here.</p>
+</section>
+
+{% if attempts %}
+<section class="card section">
+  <h2>Your scores</h2>
+  {% for a in attempts %}
+  <div class="item"><div class="m">{{ a.created_at.strftime('%b %d, %Y') }}</div><div class="t">{{ a.score }} / {{ a.total }}</div></div>
+  {% endfor %}
+</section>
+{% endif %}
+
+<section class="card section">
+  <h2>Questions</h2>
+  {% set names = {'multiple_choice': 'Multiple choice', 'true_false': 'True or false', 'identification': 'Identification', 'enumeration': 'Enumeration', 'fill_in_the_blanks': 'Fill in the blanks'} %}
+  {% for q in quiz.questions %}
+  <div class="qv">
+    <div class="qvh">
+      <div class="qvn">{{ loop.index }}</div>
+      <p class="qvt">{{ q.question }}<br><span class="qvtype">{{ names.get(q.type, q.type) }}</span></p>
+    </div>
+    {% if q.options %}
+    <ul class="opts">
+      {% for o in q.options %}<li class="opt" data-correct="{{ 'true' if loop.index0 == q.correct else 'false' }}"><b>{{ 'ABCDEFGH'[loop.index0] }}</b>{{ o }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    <div class="answer" hidden>
+      <strong>Answer:</strong> {{ q.answer }}
+      {% if q.explanation %}<span class="why">{{ q.explanation }}</span>{% endif %}
+      {% if q.evidence %}<span class="why">From your notes: “{{ q.evidence }}”</span>{% endif %}
+    </div>
+    <button class="ghost small toggleOne" type="button">Show answer</button>
+  </div>
+  {% endfor %}
+</section>
+
+<script>
+(function () {
+  const items = [...document.querySelectorAll(".qv")];
+  const all = document.getElementById("toggleAll");
+  let shown = false;
+  function setOne(qv, show) {
+    qv.classList.toggle("revealed", show);
+    qv.querySelector(".answer").hidden = !show;
+    qv.querySelector(".toggleOne").textContent = show ? "Hide answer" : "Show answer";
+  }
+  items.forEach((qv) => qv.querySelector(".toggleOne").addEventListener("click", () => setOne(qv, !qv.classList.contains("revealed"))));
+  all.addEventListener("click", () => {
+    shown = !shown;
+    items.forEach((qv) => setOne(qv, shown));
+    all.textContent = shown ? "Hide answers" : "Show answers";
+  });
+})();
+</script>
+{% endblock %}

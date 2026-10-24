@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <title>Notes to Quiz</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%234f46e5'/%3E%3Cpath d='M8 10h16M8 16h10M8 22h16' stroke='white' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -47,6 +48,14 @@ button,input,select,textarea{font:inherit;color:inherit}
 .top-in{max-width:820px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;justify-content:space-between}
 .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;letter-spacing:-.01em}
 .logo{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent-2))}
+.topnav{display:flex;align-items:center;gap:6px}
+.topnav form{margin:0}
+.navlink{padding:8px 14px;border-radius:10px;font-weight:600;font-size:15px;color:var(--text);text-decoration:none;background:none;border:1px solid transparent;cursor:pointer}
+.navlink:hover{border-color:var(--border);background:var(--card)}
+.navlink.primary{background:var(--accent);color:#fff}
+.grp2{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.savemsg{font-size:14px;font-weight:600;color:var(--muted)}
+.savemsg.err{color:var(--bad)}
 .icon-btn{width:40px;height:40px;border-radius:12px;border:1px solid var(--border);background:var(--card);cursor:pointer;display:grid;place-items:center;transition:transform .15s,border-color .15s}
 .icon-btn:hover{border-color:var(--accent);transform:translateY(-1px)}
 
@@ -182,7 +191,7 @@ input:disabled{opacity:.5;cursor:not-allowed}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
-<body>
+<body data-logged-in="{{ 'true' if current_user.is_authenticated else 'false' }}" data-words-per-question="{{ words_per_question }}">
 
 <header class="top">
   <div class="top-in">
@@ -190,9 +199,18 @@ input:disabled{opacity:.5;cursor:not-allowed}
       <div class="logo" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 12h10M4 19h16"/></svg></div>
       Notes to Quiz
     </div>
-    <button class="icon-btn" id="theme" type="button" aria-label="Switch light or dark theme">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
-    </button>
+    <nav class="topnav">
+      {% if current_user.is_authenticated %}
+        <a class="navlink" href="{{ url_for('library.library') }}">Library</a>
+        <form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="navlink" type="submit">Log out</button></form>
+      {% else %}
+        <a class="navlink" href="{{ url_for('auth.login') }}">Log in</a>
+        <a class="navlink primary" href="{{ url_for('auth.register') }}">Sign up</a>
+      {% endif %}
+      <button class="icon-btn" id="theme" type="button" aria-label="Switch light or dark theme">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </nav>
   </div>
 </header>
 
@@ -286,7 +304,11 @@ input:disabled{opacity:.5;cursor:not-allowed}
 <section id="vResult" class="wrap" hidden>
   <div class="rbar">
     <button class="ghost" id="back" type="button">← New notes</button>
-    <button class="ghost" id="copy" type="button" hidden>Copy reviewer</button>
+    <div class="grp2">
+      <span class="savemsg" id="saveMsg" hidden></span>
+      <button class="ghost" id="save" type="button" hidden>Save to library</button>
+      <button class="ghost" id="copy" type="button" hidden>Copy reviewer</button>
+    </div>
   </div>
 
   <div id="reviewer" hidden>
@@ -311,6 +333,14 @@ input:disabled{opacity:.5;cursor:not-allowed}
 
 <script>
 const $ = (s) => document.querySelector(s);
+const LOGGED_IN = document.body.dataset.loggedIn === "true";   // set by the server in the <body> tag
+const CSRF = document.querySelector('meta[name="csrf-token"]').content;
+async function jreq(method, url, body) {
+  const res = await fetch(url, { method, headers: { "Content-Type": "application/json", "X-CSRFToken": CSRF }, body: body ? JSON.stringify(body) : undefined });
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(d.error || "Something went wrong.");
+  return d;
+}
 const TYPE_INFO = {
   multiple_choice: ["Multiple choice", "Choose the best answer."],
   true_false: ["True or false", "Decide if each statement is true or false."],
@@ -367,7 +397,7 @@ async function upload(file) {
   pick.disabled = true; pick.textContent = "Reading… (scans can take a minute)";
   try {
     const fd = new FormData(); fd.append("file", file);
-    const res = await fetch("/api/extract", { method: "POST", body: fd });
+    const res = await fetch("/api/extract", { method: "POST", headers: { "X-CSRFToken": CSRF }, body: fd });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Could not read that file.");
     uploadedNotes = data.text;
@@ -427,14 +457,16 @@ $("#form").addEventListener("submit", async (e) => {
   try {
     const res = await fetch("/api/generate", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-CSRFToken": CSRF },
       signal: ctrl.signal,
       body: JSON.stringify({ notes: sourceNotes, mode, count: count.value, types }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Something went wrong.");
     lastData = data;
+    saved = { lessonId: null, quizId: null, reviewerId: null }; fromLibrary = false; saveNote("");
     if (data.mode === "reviewer") renderReviewer(data); else startQuiz(data.questions, data.adjusted);
+    refreshSave();
     stopLoading();
     show("result");
     history.pushState({ v: "result" }, "");
@@ -565,7 +597,7 @@ function qCard(i) {
           try {
             const res = await fetch("/api/review-answer", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: { "Content-Type": "application/json", "X-CSRFToken": CSRF },
               body: JSON.stringify({ type: q.type, question: q.question, answer: q.answer, user_answer: quiz.answers[i] || "", notes: quiz.notes }),
             });
             const d = await res.json();
@@ -610,15 +642,65 @@ function drawScore() {
   const again = el("button", "ghost", "Try again"); again.type = "button";
   again.addEventListener("click", () => {
     quiz.qs.forEach((q) => { if (isChoice(q) && q.type === "multiple_choice") { const t = q.options[q.correct]; shuffle(q.options); q.correct = q.options.indexOf(t); } });
-    quiz.answers.fill(null); quiz.override = {}; quiz.reviews = {}; drawQuiz(); window.scrollTo({ top: 0, behavior: "smooth" });
+    quiz.answers.fill(null); quiz.override = {}; quiz.reviews = {}; quiz.attemptId = null; drawQuiz(); window.scrollTo({ top: 0, behavior: "smooth" });
   });
   const fresh = el("button", "ghost", "New notes"); fresh.type = "button";
   fresh.addEventListener("click", () => $("#back").click());
   acts.append(again, fresh); s.append(left, acts);
+  if (!LOGGED_IN) saveNote("Log in to save this quiz and your score.");
+  else if (!saved.quizId) saveNote("Press Save to library to keep this quiz and your score.");
+  syncAttempt();
 }
 
+/* saving to the user's library (needs an account) */
+let saved = { lessonId: null, quizId: null, reviewerId: null };
+let fromLibrary = false;
+const titleFromNotes = (t) => { const l = (t.split("\n").find((x) => x.trim()) || "Untitled lesson").replace(/\s+/g, " ").trim(); return l.length <= 60 ? l : l.slice(0, 57) + "..."; };
+function saveNote(msg, err) { const m = $("#saveMsg"); m.textContent = msg || ""; m.className = "savemsg" + (err ? " err" : ""); m.hidden = !msg; }
+const isSaved = () => !!(lastData && lastData.mode === "reviewer" ? saved.reviewerId : saved.quizId);
+function refreshSave() {
+  const b = $("#save");
+  b.hidden = fromLibrary || !lastData;
+  if (b.hidden) return;
+  b.disabled = LOGGED_IN && isSaved();
+  b.textContent = !LOGGED_IN ? "Log in to save" : isSaved() ? "Saved" : "Save to library";
+}
+
+async function saveCurrent() {
+  const b = $("#save"); b.disabled = true; b.textContent = "Saving…"; saveNote("");
+  try {
+    if (lastData.mode === "reviewer") {
+      const d = await jreq("POST", "/api/save/reviewer", { title: lastData.title, topics: lastData.topics, notes: lastNotes, lesson_id: saved.lessonId });
+      saved.reviewerId = d.id; saved.lessonId = d.lesson_id;
+      saveNote("Saved. You can find it in your Library.");
+    } else {
+      const d = await jreq("POST", "/api/save/quiz", { title: titleFromNotes(lastNotes), questions: quiz.qs, notes: lastNotes, lesson_id: saved.lessonId });
+      saved.quizId = d.id; saved.lessonId = d.lesson_id;
+      saveNote("Saved. You can find it in your Library.");
+      await syncAttempt();
+    }
+  } catch (e) { saveNote(e.message, true); }
+  refreshSave();
+}
+
+async function syncAttempt() {
+  if (!LOGGED_IN || !saved.quizId || !quiz || !quiz.done) return;
+  const score = quiz.qs.filter((_, i) => correct(i)).length;
+  try {
+    if (quiz.attemptId) await jreq("PATCH", "/api/attempts/" + quiz.attemptId, { score, answers: quiz.answers });
+    else quiz.attemptId = (await jreq("POST", "/api/quizzes/" + saved.quizId + "/attempts", { score, answers: quiz.answers })).id;
+    saveNote("Score saved to your Library.");
+  } catch (e) { saveNote(e.message, true); }
+}
+
+$("#save").addEventListener("click", () => {
+  if (LOGGED_IN) return saveCurrent();
+  try { sessionStorage.setItem("pending", JSON.stringify({ data: lastData, notes: lastNotes })); } catch (e) {}   // come back to this result after logging in
+  location.href = "/login?next=/";
+});
+
 /* question limit: a simple rule, one question per N words of notes (no AI, instant) */
-const WORDS_PER_QUESTION = {{ words_per_question }};
+const WORDS_PER_QUESTION = Number(document.body.dataset.wordsPerQuestion);   // set in app.py
 let wanted = +count.value || 10;                      // the number the user chose; kept when the limit changes
 const sourceText = () => ((uploadedFile ? uploadedNotes : notes.value) || "").trim();
 
@@ -630,7 +712,7 @@ function updateCap() {
   count.value = range.value = Math.min(wanted, cap);
   const h = $("#capHint");
   h.hidden = !words;
-  if (words) h.textContent = "Your notes support up to " + cap + " questions.";
+  if (words) h.textContent = "Your notes are " + words.toLocaleString() + " words, so they support up to " + cap + " question" + (cap === 1 ? "" : "s") + " (one per " + WORDS_PER_QUESTION + " words).";
 }
 
 notes.addEventListener("input", () => updateCap());
@@ -638,6 +720,29 @@ $("#clear").addEventListener("click", () => updateCap());
 range.addEventListener("input", () => { wanted = +range.value; });
 count.addEventListener("input", () => { wanted = Math.max(1, parseInt(count.value, 10) || 1); });
 updateCap();
+
+/* open a saved quiz or reviewer (?quiz=ID or ?reviewer=ID), or restore a result after logging in */
+(async function boot() {
+  const q = new URLSearchParams(location.search);
+  try {
+    const kind = q.get("quiz") ? "quiz" : q.get("reviewer") ? "reviewer" : null;
+    if (kind) {
+      const d = await jreq("GET", (kind === "quiz" ? "/api/quizzes/" : "/api/reviewers/") + encodeURIComponent(q.get(kind)));
+      lastNotes = d.notes; fromLibrary = true;
+      saved = { lessonId: d.lesson_id, quizId: kind === "quiz" ? d.id : null, reviewerId: kind === "reviewer" ? d.id : null };
+      if (kind === "quiz") { lastData = { mode: "quiz" }; startQuiz(d.questions, null); }
+      else { lastData = { mode: "reviewer", title: d.title, topics: d.topics }; renderReviewer(lastData); }
+      $("#back").textContent = "← Library";
+      history.replaceState({ v: "result" }, "", "/");
+      refreshSave(); show("result");
+    } else if (LOGGED_IN && sessionStorage.getItem("pending")) {
+      const p = JSON.parse(sessionStorage.getItem("pending")); sessionStorage.removeItem("pending");
+      lastData = p.data; lastNotes = p.notes;
+      if (lastData.mode === "reviewer") renderReviewer(lastData); else startQuiz(lastData.questions, lastData.adjusted);
+      refreshSave(); show("result"); history.pushState({ v: "result" }, "");
+    }
+  } catch (e) { showError(e.message); }
+})();
 </script>
 </body>
 </html>

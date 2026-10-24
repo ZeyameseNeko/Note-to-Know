@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Log in · Notes to Quiz{% endblock %}
+{% block content %}
+<div class="card authcard">
+  <h1>Log in</h1>
+  <p class="lead">Open your saved reviewers, quizzes and scores.</p>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ next or '' }}">
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" autocomplete="email" required value="{{ email or '' }}">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+    <label class="check"><input type="checkbox" name="remember"> Keep me logged in on this device</label>
+    <button class="btn block" type="submit">Log in</button>
+  </form>
+  <p class="alt">New here? <a href="{{ url_for('auth.register', next=next) }}">Create an account</a></p>
+</div>
+{% endblock %}

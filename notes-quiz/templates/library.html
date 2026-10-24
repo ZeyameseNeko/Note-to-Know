@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}My library · Notes to Quiz{% endblock %}
+{% block content %}
+<h1>My library</h1>
+<p class="lead">Signed in as {{ current_user.email }}</p>
+
+<section class="card section">
+  <h2>Quizzes</h2>
+  {% for id, title, count, created, attempts, best in quizzes %}
+  <div class="item">
+    <div>
+      <div class="t">{{ title }}</div>
+      <div class="m">{{ count }} question{{ '' if count == 1 else 's' }} · {{ created.strftime('%b %d, %Y') }} ·
+        {% if attempts %}{{ attempts }} attempt{{ '' if attempts == 1 else 's' }}, best {{ best|round|int }}%{% else %}not taken yet{% endif %}</div>
+    </div>
+    <div class="acts">
+      <a class="ghost" href="{{ url_for('library.view_quiz', quiz_id=id) }}">View</a>
+      <a class="ghost" href="{{ url_for('index', quiz=id) }}">Take quiz</a>
+      <form method="post" action="{{ url_for('library.delete_quiz', quiz_id=id) }}" onsubmit="return confirm('Delete this quiz and its scores?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="danger" type="submit">Delete</button>
+      </form>
+    </div>
+  </div>
+  {% else %}<p class="empty">No saved quizzes yet. Generate one and press Save to library.</p>{% endfor %}
+</section>
+
+<section class="card section">
+  <h2>Reviewers</h2>
+  {% for id, title, created, topics in reviewers %}
+  <div class="item">
+    <div>
+      <div class="t">{{ title }}</div>
+      <div class="m">{{ topics }} topic{{ '' if topics == 1 else 's' }} · {{ created.strftime('%b %d, %Y') }}</div>
+    </div>
+    <div class="acts">
+      <a class="ghost" href="{{ url_for('index', reviewer=id) }}">Open</a>
+      <form method="post" action="{{ url_for('library.delete_reviewer', reviewer_id=id) }}" onsubmit="return confirm('Delete this reviewer?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="danger" type="submit">Delete</button>
+      </form>
+    </div>
+  </div>
+  {% else %}<p class="empty">No saved reviewers yet.</p>{% endfor %}
+</section>
+
+<section class="card section">
+  <h2>Recent scores</h2>
+  {% for score, total, created, title in recent %}
+  <div class="item">
+    <div><div class="t">{{ title }}</div><div class="m">{{ created.strftime('%b %d, %Y') }}</div></div>
+    <div class="t">{{ score }} / {{ total }}</div>
+  </div>
+  {% else %}<p class="empty">Finish a saved quiz and your score will show up here.</p>{% endfor %}
+</section>
+
+<section class="card section">
+  <details>
+    <summary>Delete my account and all my data</summary>
+    <p class="help">This removes your account, notes, reviewers, quizzes and scores for good.</p>
+    <form method="post" action="{{ url_for('library.delete_account') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label for="pw">Type your password to confirm</label>
+      <input id="pw" name="password" type="password" autocomplete="current-password" required>
+      <button class="danger" type="submit" style="margin-top:12px">Delete everything</button>
+    </form>
+  </details>
+</section>
+{% endblock %}

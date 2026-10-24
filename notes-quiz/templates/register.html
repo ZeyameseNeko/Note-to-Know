@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Sign up · Notes to Quiz{% endblock %}
+{% block content %}
+<div class="card authcard">
+  <h1>Create an account</h1>
+  <p class="lead">Save your notes, reviewers, quizzes and scores.</p>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ next or '' }}">
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" autocomplete="email" required value="{{ email or '' }}">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="new-password" minlength="10" maxlength="128" required>
+    <p class="help">At least 10 characters. A few random words make a strong password.</p>
+    <label for="confirm">Confirm password</label>
+    <input id="confirm" name="confirm" type="password" autocomplete="new-password" required>
+    <button class="btn block" type="submit">Sign up</button>
+  </form>
+  <p class="help" style="margin-top:16px">Your notes are sent to Google's Gemini API when you generate a quiz or reviewer. Saved items stay in this app's database, and you can delete your account and all your data at any time.</p>
+  <p class="alt">Already have an account? <a href="{{ url_for('auth.login', next=next) }}">Log in</a></p>
+</div>
+{% endblock %}

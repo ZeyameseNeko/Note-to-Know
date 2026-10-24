@@ -1,15 +1,22 @@
 import json
 import os
+import time
 import random
 import re
 import shutil
 from io import BytesIO
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
+from flask_wtf.csrf import CSRFError
 from google import genai
 from google.genai import types
 from pydantic import BaseModel
+
+import models
+from auth import bp as auth_bp
+from extensions import csrf, db, limiter, login_manager, migrate
+from library import bp as library_bp
 from openpyxl import load_workbook
 import pymupdf  # PyMuPDF: turns PDF pages into images for OCR
 import pytesseract
@@ -33,6 +40,77 @@ MAX_QUESTIONS = 100
 CHUNK = 20                # questions asked per API call
 WORDS_PER_QUESTION = 15   # the question limit: one question per this many words of notes (try 10 for more, 20 for fewer)
 GROUNDED_MIN = 0.8        # share of a question's quoted evidence that must really appear in the notes
+AI_TIMEOUT_MS = 120_000    # give up on a single Gemini call after 2 minutes instead of waiting forever
+REVIEWER_MAX_TOPICS = 40   # a reviewer is a summary, not a copy of the notes
+GENERATE_LIMIT = "12 per minute"   # per visitor; protects your free Gemini quota
+EXTRACT_LIMIT = "20 per minute"
+REVIEW_LIMIT = "30 per minute"
+
+
+def required_env(name):
+    value = os.getenv(name)
+    if not value:
+        raise RuntimeError(f"{name} is missing. Add it to your .env file (see .env.example).")
+    return value
+
+
+app.config.update(
+    SECRET_KEY=required_env("SECRET_KEY"),
+    SQLALCHEMY_DATABASE_URI=required_env("DATABASE_URL"),
+    SQLALCHEMY_ENGINE_OPTIONS={"pool_pre_ping": True},
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=os.getenv("COOKIE_SECURE") == "1",   # set COOKIE_SECURE=1 once the site uses HTTPS
+    WTF_CSRF_TIME_LIMIT=None,                                   # the page token stays valid for the whole session
+    MAX_NOTES_CHARS=MAX_NOTES_CHARS,
+)
+db.init_app(app)
+migrate.init_app(app, db)
+csrf.init_app(app)
+limiter.init_app(app)
+login_manager.init_app(app)
+login_manager.login_view = "auth.login"
+login_manager.login_message = "Please log in to continue."
+login_manager.login_message_category = "error"
+app.register_blueprint(auth_bp)
+app.register_blueprint(library_bp)
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    try:
+        return db.session.get(models.User, int(user_id))
+    except (TypeError, ValueError):
+        return None
+
+
+@login_manager.unauthorized_handler
+def unauthorized():
+    if request.path.startswith("/api/"):
+        return jsonify(error="Please log in first."), 401
+    return redirect(url_for("auth.login", next=request.path))
+
+
+@app.errorhandler(CSRFError)
+def csrf_error(_e):
+    if request.path.startswith("/api/"):
+        return jsonify(error="Your session expired. Refresh the page and try again."), 400
+    flash("Your session expired. Please try again.", "error")
+    return redirect(url_for("auth.login"))
+
+
+@app.errorhandler(429)
+def too_many(_e):
+    if request.path.startswith("/api/"):
+        return jsonify(error="Too many requests. Please wait a minute and try again."), 429
+    return "Too many requests. Please wait a minute and try again.", 429
+
+
+@app.errorhandler(404)
+def not_found(_e):
+    if request.path.startswith("/api/"):
+        return jsonify(error="Not found."), 404
+    return "Page not found.", 404
 
 # ---------------------------------------------------------------- prompts
 
@@ -133,11 +211,11 @@ NOTES:
 """
 
 
-def reviewer_prompt(notes):
+def reviewer_prompt(notes, max_topics):
     return f"""Turn the notes below into a study reviewer.
 
 - `title`: a short title for the lesson.
-- `topics`: every important term, concept, person, event or process in the notes, in the order they appear.
+- `topics`: the most important terms, concepts, people, events or processes in the notes, in the order they appear. Write at most {max_topics} topics. If the notes have more, keep the ones a student most needs and merge the rest.
 - `topic`: the name only, a few words.
 - `definition`: one or two plain sentences saying what it is and why it matters. Do not copy the notes word for word.
 - `example`: a concrete example taken from the notes. If the notes give no example for that topic, use an empty string. Never invent one.
@@ -191,11 +269,16 @@ def get_client():
         key = os.getenv("GEMINI_API_KEY")
         if not key:
             raise RuntimeError("GEMINI_API_KEY is missing. Add it to your .env file.")
-        _client = genai.Client(api_key=key)
+        _client = genai.Client(api_key=key, http_options=types.HttpOptions(timeout=AI_TIMEOUT_MS))
     return _client
 
 
-def ask(prompt, schema, temperature, system=SYSTEM):
+class AIOutputError(Exception):
+    """Gemini answered, but not with usable JSON (empty, blocked or cut off)."""
+
+
+def ask(prompt, schema, temperature, system=SYSTEM, max_tokens=16384):
+    started = time.time()
     response = get_client().models.generate_content(
         model=MODEL,
         contents=prompt,
@@ -204,9 +287,16 @@ def ask(prompt, schema, temperature, system=SYSTEM):
             response_mime_type="application/json",
             response_schema=schema,
             temperature=temperature,
+            max_output_tokens=max_tokens,       # stops a runaway answer from taking minutes
         ),
     )
-    return json.loads(response.text)
+    print(f"[AI] {schema.__name__} finished in {time.time() - started:.1f}s")
+    if not response.text:
+        raise AIOutputError("The AI returned an empty answer. Try again, or change the notes a little.")
+    try:
+        return json.loads(response.text)
+    except json.JSONDecodeError:
+        raise AIOutputError("The AI's answer was cut off. Try shorter notes and try again.") from None
 
 
 # ---------------------------------------------------------------- post-processing
@@ -473,6 +563,7 @@ def read_xlsx(data):
 
 
 @app.post("/api/extract")
+@limiter.limit(EXTRACT_LIMIT)
 def extract():
     f = request.files.get("file")
     if not f or not f.filename:
@@ -557,6 +648,7 @@ def extract():
 
 
 @app.post("/api/generate")
+@limiter.limit(GENERATE_LIMIT)
 def generate():
     data = request.get_json(silent=True) or {}
     notes = (data.get("notes") or "").strip()
@@ -585,7 +677,8 @@ def generate():
 
     try:
         if mode == "reviewer":
-            out = ask(reviewer_prompt(notes), ReviewerOut, 0.2)
+            max_topics = min(REVIEWER_MAX_TOPICS, max(5, len(notes.split()) // 20))
+            out = ask(reviewer_prompt(notes, max_topics), ReviewerOut, 0.2, max_tokens=8192)
             topics = [t for t in out.get("topics", []) if t.get("topic") and t.get("definition")]
             if not topics:
                 return jsonify(error="Could not find topics in these notes. Try adding more detail."), 422
@@ -609,6 +702,7 @@ def generate():
 
 
 @app.post("/api/review-answer")
+@limiter.limit(REVIEW_LIMIT)
 def review_answer():
     d = request.get_json(silent=True) or {}
 
@@ -623,7 +717,7 @@ def review_answer():
     if not (question and official and student):
         return jsonify(error="Missing question or answer."), 400
     try:
-        out = ask(review_prompt(qtype, question, official, student, notes), Review, 0.1, system=REVIEW_SYSTEM)
+        out = ask(review_prompt(qtype, question, official, student, notes), Review, 0.1, system=REVIEW_SYSTEM, max_tokens=1024)
     except Exception as e:  # noqa: BLE001
         return ai_error(e)
     verdict = "correct" if str(out.get("verdict", "")).strip().lower() == "correct" else "incorrect"
@@ -637,6 +731,10 @@ def ai_error(e):
         return jsonify(error="Rate limit reached. Wait a minute and try again."), 429
     if "NOT_FOUND" in str(e) or "no longer available" in str(e):
         return jsonify(error=f"The model '{MODEL}' is not available. Set GEMINI_MODEL in your .env to a current model name from Google AI Studio."), 502
+    if isinstance(e, AIOutputError):
+        return jsonify(error=str(e)), 502
+    if "timeout" in type(e).__name__.lower() or "timed out" in str(e).lower():
+        return jsonify(error="The AI took too long to answer. Try again, or use shorter notes."), 504
     if isinstance(e, RuntimeError):
         return jsonify(error=str(e)), 500
     return jsonify(error="The AI request failed. Check the terminal for details."), 502
